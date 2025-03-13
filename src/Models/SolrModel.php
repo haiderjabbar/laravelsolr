@@ -3,6 +3,7 @@
 namespace HaiderJabbar\LaravelSolr\Models;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class SolrModel
 {
@@ -14,7 +15,15 @@ class SolrModel
      */
     protected static function getSolrUrl($coreName)
     {
-        return config('solr.solr_url') . '/' . $coreName;
+        $solrUrl = config('solr.solr_url') . '/' . $coreName;
+        $username = config('solr.username');
+        $password = config('solr.password');
+
+        if (!empty($username) && !empty($password)) {
+            $solrUrl = Str::of($solrUrl)->replace('://', "://{$username}:{$password}@", $solrUrl);
+        }
+
+        return $solrUrl;
     }
 
     /**

@@ -7,13 +7,16 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 
 class FieldsSolrService
 {
     private ConsoleOutput $output;
     private string $solrUrl;
+    private string $solrUsername;
+    private string $solrPassword;
     private Client $client;
 
     /**
@@ -23,8 +26,10 @@ class FieldsSolrService
     public function __construct(ConsoleOutput $output)
     {
         $this->output = $output;
-        $this->solrUrl = env("SOLR_URL", "http://localhost:8983/solr");
-        $this->client = new Client(['base_uri' => $this->solrUrl]);
+        $this->solrUrl = config('solr.solr_url');
+        $this->solrUsername = config("solr.solr_username");
+        $this->solrPassword = config("solr.solr_password");
+        $this->client = new Client(['base_uri' => $this->buildUrl('')]);
     }
 
     /**
@@ -116,9 +121,9 @@ class FieldsSolrService
      * @param string $coreName
      * @return array
      */
-    public function getCoreFields(string $coreName): array
+    public function getCoreFields(string $coreName): array | JsonResponse
     {
-        $solrUrl = "{$this->solrUrl}/{$coreName}/schema/fields";
+        $solrUrl = $this->buildUrl('schema/fields');
         logger($solrUrl);
         try {
             $response = Http::withHeaders([
@@ -199,7 +204,7 @@ class FieldsSolrService
 
 
         $response = Http::withHeaders(['Content-Type' => 'application/json'])
-            ->post("{$this->solrUrl}/{$coreName}/schema", $data);
+            ->post($this->buildUrl("{$coreName}/schema"), $data);
 
         $result = $response->json();
 
@@ -221,6 +226,24 @@ class FieldsSolrService
         $message = "Failed to {$action} field '{$fieldName}' in core '{$coreName}': {$errorMessage}";
         $this->output->writeln("<comment>{$message}</comment>");
         Log::warning($message);
+    }
+
+    /**
+     * Build a URL for Solr API requests.
+     *
+     * @param string $endpoint
+     * @param array $params
+     * @return string
+     */
+    private function buildUrl(string $endpoint): string
+    {
+        if (!empty($this->solrUsername) && !empty($this->solrPassword)) {
+            $url = $this->solrUrl . '/' . $endpoint;
+            $url = Str::of($url)->replace('://', '://' . $this->solrUsername . ':' . $this->solrPassword . '@', $url);
+        } else {
+            $url = $this->solrUrl . '/' . $endpoint;
+        }
+        return $url;
     }
 
     public function setClient(Client $client): void

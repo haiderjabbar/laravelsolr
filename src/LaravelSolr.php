@@ -13,8 +13,8 @@ class LaravelSolr
     public function __construct()
     {
         $this->solrUrl = config('solr.url');
-        $this->solrUsername = config('solr.username');
-        $this->solrPassword = config('solr.password');
+        $this->solrUsername = config("solr.solr_username");
+        $this->solrPassword = config("solr.solr_password");
     }
 
     public function query($params)

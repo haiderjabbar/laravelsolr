@@ -16,8 +16,8 @@ class SolrModel
     protected static function getSolrUrl($coreName)
     {
         $solrUrl = config('solr.solr_url') . '/' . $coreName;
-        $username = config('solr.username');
-        $password = config('solr.password');
+        $username = config("solr.solr_username");
+        $password = config("solr.solr_username");
 
         if (!empty($username) && !empty($password)) {
             $solrUrl = Str::of($solrUrl)->replace('://', "://{$username}:{$password}@", $solrUrl);

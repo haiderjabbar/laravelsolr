@@ -4,11 +4,18 @@ namespace HaiderJabbar\LaravelSolr\Services;
 
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Exception;
+use Illuminate\Support\Str;
 
 class CoreSolrService
 {
     /** @var string */
     private $solrUrl;
+
+    /** @var string */
+    private $solrUsername;
+
+    /** @var string */
+    private $solrPassword;
 
     /** @var ConsoleOutput */
     public $output;
@@ -19,7 +26,9 @@ class CoreSolrService
     public function __construct()
     {
         $this->output = new ConsoleOutput();
-        $this->solrUrl = env("SOLR_URL", "http://localhost:8983/solr");
+        $this->solrUrl = config('solr.solr_url');
+        $this->solrUsername = config("solr.solr_username");
+        $this->solrPassword = config("solr.solr_password");
 
         if (empty($this->solrUrl)) {
             throw new Exception("Solr URL is not set in the environment variables.");
@@ -162,7 +171,13 @@ class CoreSolrService
      */
     private function buildUrl(string $endpoint, array $params): string
     {
-        return $this->solrUrl . '/' . $endpoint . '?' . http_build_query($params);
+        if (!empty($this->solrUsername) && !empty($this->solrPassword)) {
+            $url = $this->solrUrl . '/' . $endpoint . '?' . http_build_query($params);
+            $url = Str::of($url)->replace('://', '://' . $this->solrUsername . ':' . $this->solrPassword . '@', $url);
+        } else {
+            $url = $this->solrUrl . '/' . $endpoint . '?' . http_build_query($params);
+        }
+        return $url;
     }
 
     /**

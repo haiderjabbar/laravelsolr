@@ -3,10 +3,14 @@
 namespace HaiderJabbar\LaravelSolr\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class SolrQueryBuilder
 {
     protected $solrUrl;
+    protected $solrUsername;
+    protected $solrPassword;
+    protected $coreName;
     protected $searchQueries = [];    // For main query (q parameter)
     public $filterQueries = [];    // For filter query (fq parameter)
     public $sort = '';
@@ -22,7 +26,10 @@ class SolrQueryBuilder
 
     public function __construct($coreName)
     {
-        $this->solrUrl = (env('SOLR_URL') ?? "http://localhost:8983/solr") . '/' . $coreName . '/select';
+        $this->solrUrl = config('solr.solr_url');
+        $this->solrUsername = config("solr.solr_username");
+        $this->solrPassword = config("solr.solr_password");
+        $this->coreName = $coreName;
 
     }
 
@@ -270,7 +277,7 @@ class SolrQueryBuilder
             $query['facet.field'] = implode(",",$this->facetFields);
         }
 
-        $response = Http::get($this->solrUrl, $query);
+        $response = Http::get($this->buildUrl($this->coreName . '/select'), $query);
 
 
         if (isset($response["response"]) || $response->successful()) {
@@ -342,7 +349,7 @@ class SolrQueryBuilder
                 break;
         }
 
-        $response = Http::get($this->solrUrl, $query);
+        $response = Http::get($this->buildUrl($this->coreName . '/select'), $query);
 
         if ($response->successful()) {
             $data = $response->json();
@@ -507,5 +514,23 @@ class SolrQueryBuilder
         $condition = $this->buildCondition($field, $operator, $value, $boost);
         $this->searchQueries[] = ['condition' => $condition, 'connector' => 'AND'];
         return $this;
+    }
+
+    /**
+     * Build a URL for Solr API requests.
+     *
+     * @param string $endpoint
+     * @param array $params
+     * @return string
+     */
+    private function buildUrl(string $endpoint): string
+    {
+        if (!empty($this->solrUsername) && !empty($this->solrPassword)) {
+            $url = $this->solrUrl . '/' . $endpoint;
+            $url = Str::of($url)->replace('://', '://' . $this->solrUsername . ':' . $this->solrPassword . '@', $url);
+        } else {
+            $url = $this->solrUrl . '/' . $endpoint;
+        }
+        return $url;
     }
 }
